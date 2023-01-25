@@ -95,7 +95,7 @@ SELECT * WHERE {
 }")
   querymanual <- paste(endpoint, "?", "query", "=", gsub("\\+", "%2B", URLencode(query, reserved = TRUE)), "", sep = "")
   querymanual
-  queryres_csv <- GET(querymanual,proxy_config, timeout(60), add_headers(c(Accept = "text/csv")))
+  queryres_csv <- GET(querymanual, timeout(60), add_headers(c(Accept = "text/csv")))
   queryres_csv$content <- stri_encode(queryres_csv$content, from="UTF-8",to="UTF-8")
   blank_nodes_content <-  queryres_csv$content %>% textConnection() %>% read.csv #This downloads the first blank node. And it creates "Blank_nodes_content" to be used in the for loop below
   blank_nodes_content$s <- blank_nodes[1]
@@ -118,7 +118,7 @@ SELECT * WHERE {
 }")
     querymanual <- paste(endpoint, "?", "query", "=", gsub("\\+", "%2B", URLencode(query, reserved = TRUE)), "", sep = "")
     querymanual
-    queryres_csv <- GET(querymanual,proxy_config, timeout(60), add_headers(c(Accept = "text/csv")))
+    queryres_csv <- GET(querymanual, timeout(60), add_headers(c(Accept = "text/csv")))
     queryres_csv$content <- stri_encode(queryres_csv$content, from="UTF-8",to="UTF-8")
     queryres_content_csv <-  queryres_csv$content %>% textConnection() %>% read.csv
     queryres_content_csv$s <- blank_nodes[i]
@@ -175,7 +175,7 @@ SELECT * WHERE {
   
   querymanual <- paste(endpoint, "?", "query", "=", gsub("\\+", "%2B", URLencode(query, reserved = TRUE)), "", sep = "")
   querymanual
-  queryres_csv <- GET(querymanual,proxy_config, timeout(60), add_headers(c(Accept = "text/csv")))
+  queryres_csv <- GET(querymanual, timeout(60), add_headers(c(Accept = "text/csv")))
   queryres_csv$content <- stri_encode(queryres_csv$content, from="UTF-8",to="UTF-8")
   queryres_content_csv <-  queryres_csv$content %>% textConnection() %>% read.csv 
   df <- as_tibble(queryres_content_csv)
@@ -213,7 +213,7 @@ SELECT distinct ?g WHERE {
 
 querymanual <- paste(endpoint, "?", "query", "=", gsub("\\+", "%2B", URLencode(query, reserved = TRUE)), "", sep = "")
 querymanual
-queryres_csv <- GET(querymanual,proxy_config, timeout(60), add_headers(c(Accept = "text/csv")))
+queryres_csv <- GET(querymanual, timeout(60), add_headers(c(Accept = "text/csv")))
 queryres_csv$content <- stri_encode(queryres_csv$content, from="UTF-8",to="UTF-8")
 queryres_content_csv <-  queryres_csv$content %>% textConnection() %>% read.csv
 df <- as_tibble(queryres_content_csv)
