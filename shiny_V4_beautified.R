@@ -3,7 +3,7 @@ library(shinythemes)
 library(shinydashboard)
 library(DT)
 library(tidyverse)
-library(SPARQLchunks)
+#library(SPARQLchunks)
 
 library(curl)
 library(httr)
@@ -11,20 +11,10 @@ library(stringi)
 
 
 source("functions.r")
-
-my_dataset <- "https://energy.ld.admin.ch/sfoe/bfe_ogd17_fuellungsgrad_speicherseen/5"
-
 endpoint <- "https://lindas.admin.ch/query"
 proxy_url <- curl::ie_get_proxy_for_url(endpoint)
 proxy_config <- use_proxy(url=proxy_url)
 
-query <- paste0(
-  "PREFIX schema: <http://schema.org/>
-PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-SELECT * WHERE {
-	<",my_dataset,"> ?URI ?o
-}")
 
 #####################
 ######## Define UI 
@@ -174,7 +164,7 @@ server <- function(input, output, session)  {
   aniRoi2 <- reactiveVal()
   
   observeEvent(input$searchButton, {
-    aniRoi2(  Metadata_Pipeline(get_data(endpoint,query, my_dataset =input$caption), my_dataset = input$caption))})
+    aniRoi2(  Metadata_Pipeline(get_data(endpoint,query,my_dataset =input$caption), my_dataset = input$caption))})
   
   
   
