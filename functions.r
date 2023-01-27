@@ -1,19 +1,66 @@
-
-
-
-
-
-
-
+# 
+# 
+# 
+# query <- paste0(
+#   "PREFIX schema: <http://schema.org/>
+# PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+# PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+# SELECT * WHERE {
+# 	<https://culture.ld.admin.ch/.well-known/dataset/isil> ?URI ?o
+# }")
+# 
+# 
+# 
+# my_dataset <- "https://culture.ld.admin.ch/.well-known/dataset/isil"
 
 
 # The functinos -----------------------------------------------------------
 
 
 
+
+# Get_data_function -------------------------------------------------------
+
+
+get_data <- function(endpoint, query
+                     ,my_dataset                     ){
+  
+ # my_dataset <-    "https://energy.ld.admin.ch/sfoe/bfe_ogd17_fuellungsgrad_speicherseen/5" #my_dataset
+   if(print(my_dataset)=="") {
+     my_dataset <-    "https://energy.ld.admin.ch/sfoe/bfe_ogd17_fuellungsgrad_speicherseen/5"
+   }
+   endpoint <- "https://lindas.admin.ch/query"
+   proxy_url <- curl::ie_get_proxy_for_url(endpoint)
+   proxy_config <- use_proxy(url=proxy_url)
+  
+  
+  
+  query <- paste0(
+    "PREFIX schema: <http://schema.org/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT * WHERE {
+	<",my_dataset,"> ?URI ?o
+}")
+  
+  
+  querymanual <- paste(endpoint, "?", "query", "=", gsub("\\+", "%2B", URLencode(query, reserved = TRUE)), "", sep = "")
+  querymanual
+  queryres_csv <- GET(querymanual,proxy_config, timeout(60), add_headers(c(Accept = "text/csv")))
+  queryres_csv$content <- stri_encode(queryres_csv$content, from="UTF-8",to="UTF-8")
+  queryres_content_csv <-  queryres_csv$content %>% textConnection() %>% read.csv 
+  df <- as_tibble(queryres_content_csv)
+  df$s <- my_dataset
+  print(df)
+  #I add here the "subject" to later being able to convert it easily to triples
+}
+
+
+
+
 # Metadata_pipeline_function Compares the data ----------------------------
 Metadata_Pipeline <- function(df, my_dataset){
-
+  
   df_untouched <- df
   
   # Harmonisierung von schema.org und DCAT ----------------------------------
@@ -22,10 +69,10 @@ Metadata_Pipeline <- function(df, my_dataset){
   
   
   if(!("http://purl.org/dc/terms/title" %in% df$URI)) { #we want to override schema.name if DCAT is not also available
-    df$Property <- ifelse(df$URI=="http://schema.org/name", "http://purl.org/dc/terms/title", df$URI)}
+    df$URI <- ifelse(df$URI=="http://schema.org/name", "http://purl.org/dc/terms/title", df$URI)}
   
   if(!("http://purl.org/dc/terms/description" %in% df$URI)) {
-    df$Property <- ifelse(df$URI=="http://schema.org/description", "http://purl.org/dc/terms/description", df$URI)}
+    df$URI <- ifelse(df$URI=="http://schema.org/description", "http://purl.org/dc/terms/description", df$URI)}
   
   
   
@@ -45,7 +92,7 @@ Metadata_Pipeline <- function(df, my_dataset){
   df_join <- left_join(df_reference,df, by=c("Property"= "URI"))
   
   
-  
+  df_join
   
   if(5-sum(df_join$Property=="http://purl.org/dc/terms/title")>0){
     for( i in 1:(5-sum(df_join$Property=="http://purl.org/dc/terms/title"))) { #It is 5-sum() because 1:1 still is 1 and gives one addtional row of "Title". As a NUdge to give a title for every language
@@ -59,7 +106,7 @@ Metadata_Pipeline <- function(df, my_dataset){
     }
   }
   
-  
+  print("madeithere")
   
   df_untouched <- df_untouched %>% mutate(Property = URI) %>% select(-URI)
   
@@ -71,7 +118,7 @@ Metadata_Pipeline <- function(df, my_dataset){
   df_combined <- unique(df_combined)
   
   
-  
+  print("madeithere2")
   
   
   
@@ -81,7 +128,7 @@ Metadata_Pipeline <- function(df, my_dataset){
   blank_nodes <- str_match(blank_nodes,"^_:genid.+")
   blank_nodes <- blank_nodes[!(is.na(blank_nodes))]
   
-  
+  if(length(blank_nodes)>0) {
   
   query <- paste0("
                 PREFIX schema: <http://schema.org/>
@@ -95,7 +142,7 @@ SELECT * WHERE {
 }")
   querymanual <- paste(endpoint, "?", "query", "=", gsub("\\+", "%2B", URLencode(query, reserved = TRUE)), "", sep = "")
   querymanual
-  queryres_csv <- GET(querymanual, timeout(60), add_headers(c(Accept = "text/csv")))
+  queryres_csv <- GET(querymanual,proxy_config, timeout(60), add_headers(c(Accept = "text/csv")))
   queryres_csv$content <- stri_encode(queryres_csv$content, from="UTF-8",to="UTF-8")
   blank_nodes_content <-  queryres_csv$content %>% textConnection() %>% read.csv #This downloads the first blank node. And it creates "Blank_nodes_content" to be used in the for loop below
   blank_nodes_content$s <- blank_nodes[1]
@@ -118,7 +165,7 @@ SELECT * WHERE {
 }")
     querymanual <- paste(endpoint, "?", "query", "=", gsub("\\+", "%2B", URLencode(query, reserved = TRUE)), "", sep = "")
     querymanual
-    queryres_csv <- GET(querymanual, timeout(60), add_headers(c(Accept = "text/csv")))
+    queryres_csv <- GET(querymanual,proxy_config, timeout(60), add_headers(c(Accept = "text/csv")))
     queryres_csv$content <- stri_encode(queryres_csv$content, from="UTF-8",to="UTF-8")
     queryres_content_csv <-  queryres_csv$content %>% textConnection() %>% read.csv
     queryres_content_csv$s <- blank_nodes[i]
@@ -127,15 +174,18 @@ SELECT * WHERE {
     
   }
   
-  
-  
+  df_combined <- add_row(df_combined,blank_nodes_content)
+  }
+  print("madeithere4")
   
   # adding the blank_Nodes to the rest of the df ----------------------------
   
-  df_combined <- add_row(df_combined,blank_nodes_content)
+  
   df_combined <- unique(df_combined)
   df_combined
   df_combined$ReqLevel <- ifelse(is.na(df_combined$ReqLevel),"not_DCAT",df_combined$ReqLevel)
+  
+  print("madeitherefastfertig5")
   
   df_combined <- df_combined %>% mutate(level= (ifelse(ReqLevel=="Mandatory", 1, ifelse(ReqLevel=="Recommended",2,ifelse(ReqLevel=="not_DCAT",3,ifelse(ReqLevel=="Optional",4, NA) )))))
   
@@ -146,46 +196,8 @@ SELECT * WHERE {
   df_combined <- df_combined %>%  relocate(o) %>% relocate(Property) %>%  relocate(s)
   
   df_combined
-
+  
 }
-
-
-# Get_data_function -------------------------------------------------------
-
-
-get_data <- function(endpoint, query
-                     ,my_dataset                     ){
-  
-  my_dataset <-    "https://energy.ld.admin.ch/sfoe/bfe_ogd17_fuellungsgrad_speicherseen/5" #my_dataset
-  print(my_dataset)
-   endpoint <- "https://lindas.admin.ch/query"
-   proxy_url <- curl::ie_get_proxy_for_url(endpoint)
-   proxy_config <- use_proxy(url=proxy_url)
-  
-  
-  
-  query <- paste0(
-    "PREFIX schema: <http://schema.org/>
-PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-SELECT * WHERE {
-	<",my_dataset,"> ?URI ?o
-}")
-  
-  
-  querymanual <- paste(endpoint, "?", "query", "=", gsub("\\+", "%2B", URLencode(query, reserved = TRUE)), "", sep = "")
-  querymanual
-  queryres_csv <- GET(querymanual, timeout(60), add_headers(c(Accept = "text/csv")))
-  queryres_csv$content <- stri_encode(queryres_csv$content, from="UTF-8",to="UTF-8")
-  queryres_content_csv <-  queryres_csv$content %>% textConnection() %>% read.csv 
-  df <- as_tibble(queryres_content_csv)
-  df$s <- my_dataset
-  print(df)
-  #I add here the "subject" to later being able to convert it easily to triples
-}
-
-
-
 
 
 # Triple_generator --------------------------------------------------------
@@ -213,7 +225,7 @@ SELECT distinct ?g WHERE {
 
 querymanual <- paste(endpoint, "?", "query", "=", gsub("\\+", "%2B", URLencode(query, reserved = TRUE)), "", sep = "")
 querymanual
-queryres_csv <- GET(querymanual, timeout(60), add_headers(c(Accept = "text/csv")))
+queryres_csv <- GET(querymanual,proxy_config, timeout(60), add_headers(c(Accept = "text/csv")))
 queryres_csv$content <- stri_encode(queryres_csv$content, from="UTF-8",to="UTF-8")
 queryres_content_csv <-  queryres_csv$content %>% textConnection() %>% read.csv
 df <- as_tibble(queryres_content_csv)
